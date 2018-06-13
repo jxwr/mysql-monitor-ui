@@ -6,27 +6,24 @@ import '../node_modules/react-vis/dist/style.css';
 import { map, range } from 'underscore';
 import './App.css';
 
-let openingObserver = {
-    onNext: x => console.log('Opening socket'),
-    onError: err => console.log('Opening socket error'),
-    onCompleted: () => console.log('Completed')
-};
-let closingObserver = {
-    onNext: x => console.log('Closing socket'), 
-    onError: err => console.log('Closing socket error'),
-    onCompleted: () => console.log('Completed')
-};
-
 const WS_HOST = "ws://10.21.97.29:8412";
 
 class QueryTopRanking extends React.Component {
     constructor() {
 	super();
-
-        this.stateSocket = DOM.fromWebSocket(
+        let openingObserver = {
+            onNext: x => console.log('Opening socket'),
+            onError: err => console.log('Opening socket error'),
+            onCompleted: () => console.log('Open completed')
+        };
+        let closingObserver = {
+            onNext: x => console.log('Closing socket'), 
+            onError: err => console.log('Closing socket error'),
+            onCompleted: () => console.log('Close completed')
+        };
+        let ws = DOM.fromWebSocket(
             WS_HOST +'/collector', null, openingObserver, closingObserver);
-
-        this.collector = this.stateSocket.map(e => JSON.parse(e.data));
+        this.collector = ws.map(e => JSON.parse(e.data));
         this.state = {queries: []};
         this.queryMap = {};
     }
