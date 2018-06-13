@@ -6,83 +6,57 @@ import '../node_modules/react-vis/dist/style.css';
 import { map, range } from 'underscore';
 import './App.css';
 
-var openingObserver = {
-    onNext: function (x) {
-        console.log('Opening socket');
-    },
-    onError: function (err) {
-        console.log('Opening socket error');        
-    },
-    onCompleted: function () {
-        console.log('Completed');
-    }
+let openingObserver = {
+    onNext: x => console.log('Opening socket'),
+    onError: err => console.log('Opening socket error'),
+    onCompleted: () => console.log('Completed')
 };
-var closingObserver = {
-    onNext: function (x) {
-        console.log('Closing socket');        
-    },
-    onError: function (err) {
-        console.log('Closing socket error');
-    },
-    onCompleted: function () {
-        console.log('Completed');
-    }
+let closingObserver = {
+    onNext: x => console.log('Closing socket'), 
+    onError: err => console.log('Closing socket error'),
+    onCompleted: () => console.log('Completed')
 };
 
 const WS_HOST = "ws://10.21.97.29:8412";
-
 
 class QueryTopRanking extends React.Component {
     constructor() {
 	super();
 
-        console.log("cons");
+        this.stateSocket = DOM.fromWebSocket(
+            WS_HOST +'/collector', null, openingObserver, closingObserver);
 
-        this.stateSocket = DOM.fromWebSocket(WS_HOST +'/collector', null, openingObserver, closingObserver);
-
-        this.collector = this.stateSocket.map(function(e){
-            let obj = JSON.parse(e.data);
-            return obj;
-        });
-        
-        this.state = {
-            queries: []
-        };
+        this.collector = this.stateSocket.map(e => JSON.parse(e.data));
+        this.state = {queries: []};
         this.queryMap = {};
     }
     
     componentDidMount() {
         let that = this;
 	this.collector.subscribe(
-	    function(obj) {
+	    obj => {
                 let lastQueries = that.state.queries;
                 map(obj.groups, (v, k) => {
-                    v.key = k;
-                    
+                    let chartData;
                     let lastQuery = that.queryMap[k];
-                    var chartData; 
                     if (lastQuery) {
                         chartData = lastQuery.chartData;
                     } else {
-                        chartData = map(range(20), i => { return {y: 0, x: i}; });
+                        chartData = map(range(20), i => ({y: 0, x: i}));
                     }
                     chartData.push({y: v.success, x: 0});
                     chartData = chartData.slice(-20);
-                    for (var i = 0; i < chartData.length; i++) {
+                    for (let i = 0; i < chartData.length; i++) {
                         chartData[i].x = i;
                     }
                     v.chartData = chartData;
                     
+                    v.key = k;
                     that.queryMap[k] = v;
                 });
 
-                let queries = map(that.queryMap, (v, k) => {
-                    return v;
-                });
-
-                that.setState({
-                    queries: queries
-                });
+                let queries = map(that.queryMap, (v, k) => v);
+                that.setState({queries: queries});
 	    }
 	);
     }
