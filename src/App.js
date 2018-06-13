@@ -1,65 +1,118 @@
 import React, { Component } from 'react';
-import { Observable, Subject, ReplaySubject, from, of, range } from 'rxjs';
+import { Observable } from 'rxjs';
 import { DOM } from 'rx-dom';
-import { map, filter, switchMap } from 'rxjs/operators';
-import { LineChart, Line } from 'recharts';
+import { XYPlot, LineSeries } from 'react-vis';
+import '../node_modules/react-vis/dist/style.css';
+import { map, range } from 'underscore';
 import './App.css';
 
-const data = [
-    {uv: 4000},
-    {uv: 3000},
-    {uv: 2000},
-    {uv: 2780},
-    {uv: 1890},
-    {uv: 2390},
-    {uv: 3490},
-];
+var openingObserver = {
+    onNext: function (x) {
+        console.log('Opening socket');
+    },
+    onError: function (err) {
+        console.log('Opening socket error');        
+    },
+    onCompleted: function () {
+        console.log('Completed');
+    }
+};
+var closingObserver = {
+    onNext: function (x) {
+        console.log('Closing socket');        
+    },
+    onError: function (err) {
+        console.log('Closing socket error');
+    },
+    onCompleted: function () {
+        console.log('Completed');
+    }
+};
 
-var openingObserver = Observable.create(function() { console.log('Opening socket'); });
-var closingObserver = Observable.create(function() { console.log('Closing socket'); });
+const WS_HOST = "ws://10.21.97.29:8412";
 
-console.log(DOM.fromWebSocket);
-
-const WS_HOST = "";
-
-var stateSocket = DOM.fromWebSocket(WS_HOST +'/collector', null, openingObserver, closingObserver);
-var collector = stateSocket.map(function(e){
-    return e;
-});
 
 class QueryTopRanking extends React.Component {
     constructor() {
-	
+	super();
+
+        console.log("cons");
+
+        this.stateSocket = DOM.fromWebSocket(WS_HOST +'/collector', null, openingObserver, closingObserver);
+
+        this.collector = this.stateSocket.map(function(e){
+            let obj = JSON.parse(e.data);
+            return obj;
+        });
+        
+        this.state = {
+            queries: []
+        };
+        this.queryMap = {};
     }
     
     componentDidMount() {
-	collector.subscribe(
+        let that = this;
+	this.collector.subscribe(
 	    function(obj) {
-		console.log(obj);
+                let lastQueries = that.state.queries;
+                map(obj.groups, (v, k) => {
+                    v.key = k;
+                    
+                    let lastQuery = that.queryMap[k];
+                    var chartData; 
+                    if (lastQuery) {
+                        chartData = lastQuery.chartData;
+                    } else {
+                        chartData = map(range(20), i => { return {y: 0, x: i}; });
+                    }
+                    chartData.push({y: v.success, x: 0});
+                    chartData = chartData.slice(-20);
+                    for (var i = 0; i < chartData.length; i++) {
+                        chartData[i].x = i;
+                    }
+                    v.chartData = chartData;
+                    
+                    that.queryMap[k] = v;
+                });
+
+                let queries = map(that.queryMap, (v, k) => {
+                    return v;
+                });
+
+                that.setState({
+                    queries: queries
+                });
 	    }
 	);
     }
     
     render() {
+        let queries = map(this.state.queries, q => {
+            return (
+                <tr key={q.key}>
+                  <td>{q.key}</td>
+                  <td>
+                    <XYPlot height={100} width={300}>
+                      <LineSeries data={q.chartData} />
+                    </XYPlot>
+                  </td>
+                  <td>{q.success}</td>
+                  <td>{q.failed}</td>                  
+                </tr>
+            );
+        });
+        
 	return (
 	    <table className="build">
               <tbody>
 		<tr>
 		  <th>query</th>
 		  <th>qps_chart</th>
-		  <th>qps</th>
-		  <th>avg</th>
+		  <th>succ</th>
+		  <th>fail</th>
 		</tr>
-		<tr>
-		  <td>select</td>
-		  <td>
-		    <LineChart width={200} height={50} data={data}>
-		      <Line type="monotone" dataKey="uv" stroke="#8884d8" />
-		    </LineChart>
-		  </td>
-		  <td>120</td>
-		  <td>20 ms</td>
-		</tr>
+                {queries}
               </tbody>
 	    </table>
 	);

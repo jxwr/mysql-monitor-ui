@@ -6,9 +6,12 @@
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
     "react-scripts": "1.1.4",
+    "react-vis": "^1.9.4",
     "recharts": "^1.0.0-beta.10",
     "rx-dom": "^7.0.3",
-    "rxjs": "^6.2.0"
+    "rxjs": "^6.2.0",
+    "rxjs-compat": "^6.2.1",
+    "underscore": "^1.9.1"
   },
   "scripts": {
     "start": "react-scripts start",
