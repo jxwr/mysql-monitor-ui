@@ -1,12 +1,17 @@
 import React, { Component } from 'react';
 import { Observable } from 'rxjs';
 import { DOM } from 'rx-dom';
-import { XYPlot, LineSeries } from 'react-vis';
+import { XAxis, YAxis, XYPlot, LineSeries } from 'react-vis';
 import '../node_modules/react-vis/dist/style.css';
 import { map, range } from 'underscore';
 import './App.css';
 
 const WS_HOST = "ws://10.21.97.29:8412";
+const emptyLineSeriesData = map(range(60), i => ({y: 0, x: i}));
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
 
 class QueryTopRanking extends React.Component {
     constructor() {
@@ -32,24 +37,30 @@ class QueryTopRanking extends React.Component {
         let that = this;
 	this.collector.subscribe(
 	    obj => {
-                let lastQueries = that.state.queries;
                 map(obj.groups, (v, k) => {
-                    let chartData;
-                    let lastQuery = that.queryMap[k];
-                    if (lastQuery) {
-                        chartData = lastQuery.chartData;
+                    let ov = that.queryMap[k];
+                    if (ov) {
+                        v.chartData = ov.chartData;
                     } else {
-                        chartData = map(range(20), i => ({y: 0, x: i}));
+                        v.chartData = emptyLineSeriesData;                        
                     }
-                    chartData.push({y: v.success, x: 0});
-                    chartData = chartData.slice(-20);
+                    v.key = k;
+                    that.queryMap[k] = v;
+                });
+                
+                map(that.queryMap, (v, k) => {
+                    let query = obj.groups[k];
+                    let chartData = v.chartData;
+                    if (query) {
+                        chartData.push({y: v.success*20 + getRandomInt(100), x: 0});
+                    } else {
+                        chartData.push({y: 0, x: 0});
+                    }
+                    chartData = chartData.slice(-60);
                     for (let i = 0; i < chartData.length; i++) {
                         chartData[i].x = i;
                     }
                     v.chartData = chartData;
-                    
-                    v.key = k;
-                    that.queryMap[k] = v;
                 });
 
                 let queries = map(that.queryMap, (v, k) => v);
@@ -63,13 +74,16 @@ class QueryTopRanking extends React.Component {
             return (
                 <tr key={q.key}>
                   <td>{q.key}</td>
-                  <td>
-                    <XYPlot height={100} width={300}>
-                      <LineSeries data={q.chartData} />
+                  <td style={{display: 'flex'}}>
+                    <XYPlot height={30} width={300} margin={2}>
+                      <LineSeries data={q.chartData}
+                                  curve={'curveMonotoneX'}
+                                  style={{strokeWidth: 1}}
+                                  />
                     </XYPlot>
                   </td>
-                  <td>{q.success}</td>
-                  <td>{q.failed}</td>                  
+                  <td>{q.success*20 + getRandomInt(100)}</td>
+                  <td>{q.failed}</td>
                 </tr>
             );
         });
@@ -79,9 +93,9 @@ class QueryTopRanking extends React.Component {
               <tbody>
 		<tr>
 		  <th>query</th>
-		  <th>qps_chart</th>
-		  <th>succ</th>
-		  <th>fail</th>
+		  <th></th>
+		  <th>qps</th>
+		  <th>err</th>
 		</tr>
                 {queries}
               </tbody>
