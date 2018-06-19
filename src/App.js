@@ -28,7 +28,9 @@ class QueryTopRanking extends React.Component {
         };
         let ws = DOM.fromWebSocket(
             WS_HOST +'/collector', null, openingObserver, closingObserver);
-        this.collector = ws.map(e => JSON.parse(e.data));
+        this.collector = ws.map(e => {
+            let d = JSON.parse(e.data); console.log(d); return d;
+        });
         this.state = {queries: []};
         this.queryMap = {};
     }
@@ -52,7 +54,7 @@ class QueryTopRanking extends React.Component {
                     let query = obj.groups[k];
                     let chartData = v.chartData;
                     if (query) {
-                        chartData.push({y: v.success*20 + getRandomInt(100), x: 0});
+                        chartData.push({y: v.qps, x: 0});
                     } else {
                         chartData.push({y: 0, x: 0});
                     }
@@ -74,7 +76,7 @@ class QueryTopRanking extends React.Component {
             return (
                 <tr key={q.key}>
                   <td>{q.key}</td>
-                  <td style={{display: 'flex'}}>
+                  <td>
                     <XYPlot height={30} width={300} margin={2}>
                       <LineSeries data={q.chartData}
                                   curve={'curveMonotoneX'}
@@ -82,19 +84,27 @@ class QueryTopRanking extends React.Component {
                                   />
                     </XYPlot>
                   </td>
-                  <td>{q.success*20 + getRandomInt(100)}</td>
+                  <td>{q.qps}</td>
+                  <td>{q.avg_latency}ms</td>
+                  <td>{q.status_query_was_slow}</td>
+                  <td>{q.status_no_index_used}</td>
+                  <td>{q.status_no_good_index_used}</td>
                   <td>{q.failed}</td>
                 </tr>
             );
         });
         
 	return (
-	    <table className="build">
+	    <table className="build" style={{fontFamily: 'courier', fontSize: '11px'}}>
               <tbody>
 		<tr>
 		  <th>query</th>
 		  <th></th>
 		  <th>qps</th>
+		  <th>avg</th>
+		  <th>slow</th>
+		  <th>no_idx</th>
+		  <th>bad_idx</th>
 		  <th>err</th>
 		</tr>
                 {queries}

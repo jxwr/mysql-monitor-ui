@@ -20,6 +20,8 @@ th {
 
 th, td {
     border: 1px solid #ddd;
+    min-width: 45px;
+    text-align: center;
 }
 
 .App-title {
